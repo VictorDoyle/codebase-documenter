@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { analyzeFunction } from './utils/analyzeFunction';
+import { getAllTsFiles } from './utils/getAllTSFiles';
 
 export function activate(context: vscode.ExtensionContext) {
     // generate local doc
@@ -36,28 +37,25 @@ export function activate(context: vscode.ExtensionContext) {
 		let functionDictionary: Record<string, string> = {};
 	
 		for (const folder of workspaceFolders) {
-			const folderPath = folder.uri.fsPath;
-			const files = fs.readdirSync(folderPath);
-	
-			for (const file of files) {
-				if (file.endsWith('.ts')) {
-					const filePath = path.join(folderPath, file);
-					const fileContent = fs.readFileSync(filePath, 'utf8');
-	
-					// extract definitions
-					const docRegex = /\/\*\*(.*?)\*\//gs; 
-					let match;
-					while ((match = docRegex.exec(fileContent)) !== null) {
-						const doc = match[1].trim();
-						const nameMatch = doc.match(/\*\s(.*) -/);
-						if (nameMatch && nameMatch[1]) {
-							let formattedDoc = doc.replace(/\* @param {(.+?)} (\w+) - (.+)/g, 'Takes parameter {$1} $2 - $3');
-							functionDictionary[nameMatch[1]] = formattedDoc;
-						}
-					}
-				}
-			}
-		}
+            const folderPath = folder.uri.fsPath;
+            const tsFiles = getAllTsFiles(folderPath);
+
+            for (const filePath of tsFiles) {
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+
+                // extract definitions from files
+                const docRegex = /\/\*\*(.*?)\*\//gs;
+                let match;
+                while ((match = docRegex.exec(fileContent)) !== null) {
+                    const doc = match[1].trim();
+                    const nameMatch = doc.match(/\*\s(.*) -/);
+                    if (nameMatch && nameMatch[1]) {
+                        let formattedDoc = doc.replace(/\* @param {(.+?)} (\w+) - (.+)/g, 'Takes parameter {$1} $2 - $3');
+                        functionDictionary[nameMatch[1]] = formattedDoc;
+                    }
+                }
+            }
+        }
 	
 		let markdownContent = '# Dictionary of Functions\n\n';
 		for (const [functionName, doc] of Object.entries(functionDictionary)) {
