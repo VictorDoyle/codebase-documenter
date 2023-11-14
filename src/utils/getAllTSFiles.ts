@@ -5,13 +5,14 @@ export function getAllTsFiles(dirPath: string, arrayOfFiles: string[] = []) {
     const files = fs.readdirSync(dirPath);
 
     files.forEach(function(file) {
-        if (fs.statSync(dirPath + "/" + file).isDirectory()) {
-            if (file !== 'node_modules') { // skip node modules
-                arrayOfFiles = getAllTsFiles(dirPath + "/" + file, arrayOfFiles);
+        const fullPath = path.join(dirPath, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+            if (file !== 'node_modules') { //skip node modules
+                arrayOfFiles = getAllTsFiles(fullPath, arrayOfFiles);
             }
         } else {
             if (file.endsWith('.ts')) {
-                arrayOfFiles.push(path.join(dirPath, "/", file));
+                arrayOfFiles.push(fullPath);
             }
         }
     });

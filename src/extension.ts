@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { analyzeFunction } from './utils/analyzeFunction';
 import { getAllTsFiles } from './utils/getAllTSFiles';
+import { extractDocsFromFiles } from './utils/docExtractor';
 
 export function activate(context: vscode.ExtensionContext) {
     // generate local doc
@@ -27,49 +28,30 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
 
     // generate file doc output to root
-	let generateHelperDisposable = vscode.commands.registerCommand('extension.generateFunctionHelper', async () => {
-		const workspaceFolders = vscode.workspace.workspaceFolders;
-		if (!workspaceFolders) {
-			vscode.window.showInformationMessage('No workspace folder found.');
-			return;
-		}
-	
-		let functionDictionary: Record<string, string> = {};
-	
-		for (const folder of workspaceFolders) {
-            const folderPath = folder.uri.fsPath;
-            const tsFiles = getAllTsFiles(folderPath);
-
-            for (const filePath of tsFiles) {
-                const fileContent = fs.readFileSync(filePath, 'utf8');
-
-                // extract definitions from files
-                const docRegex = /\/\*\*(.*?)\*\//gs;
-                let match;
-                while ((match = docRegex.exec(fileContent)) !== null) {
-                    const doc = match[1].trim();
-                    const nameMatch = doc.match(/\*\s(.*) -/);
-                    if (nameMatch && nameMatch[1]) {
-                        let formattedDoc = doc.replace(/\* @param {(.+?)} (\w+) - (.+)/g, 'Takes parameter {$1} $2 - $3');
-                        functionDictionary[nameMatch[1]] = formattedDoc;
-                    }
-                }
-            }
+    let generateHelperDisposable = vscode.commands.registerCommand('extension.generateFunctionHelper', async () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) {
+            vscode.window.showInformationMessage('No workspace folder found.');
+            return;
         }
-	
-		let markdownContent = '# Dictionary of Functions\n\n';
-		for (const [functionName, doc] of Object.entries(functionDictionary)) {
-			markdownContent += `## ${functionName}\n${doc}\n\n`;
-		}
-	
-		// write to functionHelper.md
-		const mdFilePath = path.join(workspaceFolders[0].uri.fsPath, 'functionHelper.md');
-		fs.writeFileSync(mdFilePath, markdownContent);
-		vscode.window.showInformationMessage('Function Helper Markdown generated.');
-	});
-	
-	context.subscriptions.push(generateHelperDisposable);
-	
+    
+        const folderPath = workspaceFolders[0].uri.fsPath;
+        const tsFiles = getAllTsFiles(folderPath);
+        const documentation = extractDocsFromFiles(tsFiles);
+    
+        console.log("Extracted documentation:", documentation); 
+        let markdownContent = '# Dictionary of Functions\n\n';
+        Object.keys(documentation).sort().forEach(functionName => {
+            console.log(`Adding documentation for ${functionName}`); 
+            markdownContent += `## ${functionName}\n${documentation[functionName]}\n\n`;
+        });
+        
+        console.log("Final Markdown Content:", markdownContent);
+        const mdFilePath = path.join(folderPath, 'functionHelper.md');
+        fs.writeFileSync(mdFilePath, markdownContent);
+        vscode.window.showInformationMessage('Function Helper Markdown generated.');
+    });
+    context.subscriptions.push(generateHelperDisposable);	
 }
 
 async function generateDocumentation({ name, params }: { name: string, params: any[] }): Promise<string> {
