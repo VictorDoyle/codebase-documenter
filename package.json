@@ -14,13 +14,21 @@
   "contributes": {
     "commands": [{
       "command": "extension.generateFunctionDocumentation",
-      "title": "Generate local documentation for this function"
-    }],
+      "title": "Generate Local Documentation for this function" 
+    },
+    {
+      "command": "extension.generateFunctionHelper",
+      "title": "Create/Update Markdown Dictionary of Functions"
+  }],
     "menus": {
       "editor/context": [{
         "when": "editorHasSelection",
         "command": "extension.generateFunctionDocumentation"
-      }]
+      },     
+      {
+        "when": "editorTextFocus",
+        "command": "extension.generateFunctionHelper"
+    }]
     }    
   },
   "scripts": {
